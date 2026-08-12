@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+#
+# gitctl — Git 日常操作助手（入口）
+#
+# 本文件只负责：定位项目根目录 → 加载 lib/ 与 commands/ → 解析参数分发子命令。
+# 基础能力在 lib/，子命令实现在 commands/。
+
+set -euo pipefail
+
+GITCTL_VERSION="0.1.0"
+
+# 解析符号链接，定位项目根目录（支持 ln -s / make install 安装到 PATH）
+_source="${BASH_SOURCE[0]}"
+while [ -L "$_source" ]; do
+  _dir="$(cd "$(dirname "$_source")" && pwd)"
+  _source="$(readlink "$_source")"
+  case "$_source" in /*) ;; *) _source="$_dir/$_source" ;; esac
+done
+GITCTL_ROOT="$(cd "$(dirname "$_source")/.." && pwd)"
+
+# 加载基础库与子命令（这些文件只定义函数，不产生副作用）
+for _f in "$GITCTL_ROOT"/lib/*.sh "$GITCTL_ROOT"/commands/*.sh; do
+  # shellcheck disable=SC1090
+  . "$_f"
+done
+
+usage() {
+  cat <<EOF
+${BOLD}gitctl ${GITCTL_VERSION} — Git 日常操作助手${RESET}
+
+用法:
+  gitctl [clean]     交互式清理本地分支（clean 可省略，直接 gitctl 即可）
+  gitctl help        显示本帮助
+  gitctl version     显示版本
+
+clean 按键:
+  ↑/↓ 或 k/j    移动光标
+  空格           选中 / 取消当前分支
+  a             全选 / 全不选
+  Enter         删除选中的分支（删除前需确认）
+  q/ESC         取消退出
+EOF
+}
+
+main() {
+  # 无参数时默认进入 clean（目前唯一功能）
+  local cmd="${1:-clean}"
+  if [ $# -ge 1 ]; then shift; fi
+  case "$cmd" in
+    clean)                cmd_clean "$@" ;;
+    help|-h|--help)       usage ;;
+    version|-V|--version) printf 'gitctl %s\n' "$GITCTL_VERSION" ;;
+    *)
+      printf '%s错误:%s 未知命令: %s\n\n' "$RED" "$RESET" "$cmd" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
+}
+
+main "$@"

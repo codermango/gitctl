@@ -30,6 +30,7 @@ ${BOLD}gitctl ${GITCTL_VERSION} — Git 日常操作助手${RESET}
 
 用法:
   gitctl [clean]     交互式清理本地分支（clean 可省略，直接 gitctl 即可）
+  gitctl done        回到主分支：切主分支 → git pull → 删除刚才的分支
   gitctl help        显示本帮助
   gitctl version     显示版本
 
@@ -43,11 +44,12 @@ EOF
 }
 
 main() {
-  # 无参数时默认进入 clean（目前唯一功能）
+  # 无参数时默认进入 clean
   local cmd="${1:-clean}"
   if [ $# -ge 1 ]; then shift; fi
   case "$cmd" in
     clean)                cmd_clean "$@" ;;
+    done)                 cmd_done "$@" ;;
     help|-h|--help)       usage ;;
     version|-V|--version) printf 'gitctl %s\n' "$GITCTL_VERSION" ;;
     *)

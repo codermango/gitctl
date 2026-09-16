@@ -52,6 +52,26 @@ expect "仓库外 clean 应报错"      1 /bin/bash -c "cd '$TMP' && '$BIN' clea
 expect "仓库内非交互 clean 应报错" 1 /bin/bash -c "cd '$TMP/repo' && '$BIN' clean </dev/null"
 expect "无参数默认走 clean"       1 /bin/bash -c "cd '$TMP/repo' && '$BIN' </dev/null"
 
+# done 的测试只覆盖联网前的守卫路径，任何一条都走不到 git pull
+GIT_Q=(git -c user.email=t@example.com -c user.name=t)
+"${GIT_Q[@]}" init -q "$TMP/main"
+"${GIT_Q[@]}" -C "$TMP/main" commit -q --allow-empty -m init
+"${GIT_Q[@]}" -C "$TMP/main" branch -M main
+cp -R "$TMP/main" "$TMP/feature"
+"${GIT_Q[@]}" -C "$TMP/feature" checkout -q -b feature
+cp -R "$TMP/feature" "$TMP/dirty"
+"${GIT_Q[@]}" -C "$TMP/dirty" commit -q --allow-empty -m tracked
+echo changed > "$TMP/dirty/tracked.txt"
+"${GIT_Q[@]}" -C "$TMP/dirty" add tracked.txt
+cp -R "$TMP/main" "$TMP/detached"
+"${GIT_Q[@]}" -C "$TMP/detached" checkout -q --detach
+
+expect "done 带参数应报错"         1 /bin/bash "$BIN" done foo
+expect "仓库外 done 应报错"        1 /bin/bash -c "cd '$TMP' && '$BIN' done </dev/null"
+expect "已在主分支时 done 应报错"  1 /bin/bash -c "cd '$TMP/main' && '$BIN' done </dev/null"
+expect "detached HEAD done 应报错" 1 /bin/bash -c "cd '$TMP/detached' && '$BIN' done </dev/null"
+expect "工作区脏时 done 应报错"    1 /bin/bash -c "cd '$TMP/dirty' && '$BIN' done </dev/null"
+
 echo
 if [ "$FAIL" -eq 0 ]; then
   printf '\033[32m全部通过\033[0m（%s 项）\n' "$PASS"
